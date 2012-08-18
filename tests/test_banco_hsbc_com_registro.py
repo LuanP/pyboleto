@@ -2,7 +2,7 @@
 import unittest
 import datetime
 
-from pyboleto.bank.hsbc import BoletoHsbcComRegistro
+from pyboleto.bank.hsbc import BoletoHsbc
 
 from .testutils import BoletoTestCase
 
@@ -11,7 +11,7 @@ class TestBancoHsbcComRegistro(BoletoTestCase):
     def setUp(self):
         self.dados = []
         for i in range(3):
-            d = BoletoHsbcComRegistro()
+            d = BoletoHsbc(True)
             d.agencia_cedente = '0141-4'
             d.conta_cedente = '5000252'
             d.data_vencimento = datetime.date(2010, 11, 6)

@@ -4,33 +4,67 @@ from ..data import BoletoData, custom_property
 
 ### CAUTION - NÃO TESTADO ###
 
-
-class BoletoHsbc(BoletoData):
+class BoletoHsbc(object):
     '''
-        Gera Dados necessários para criação de boleto para o banco HSBC
+        Implementação do boleto do HSBC
+        Para o HSBC é necessário passar se o boleto irá ser com registro ou não
+        atráves do parametro 'com_registro'
+        Utiliza carteira CNR - para boletos sem registro
+        Utiliza carteira CSB - para boletos com registro
+
+        eg::
+            boleto = BoletoHsbc(com_registro=True)
+            boleto2 = BoletoHsbc(com_registro=False)
+
+        :param com_registro: define a emissão com registro.Default: False
     '''
 
+    def __new__(cls, com_registro=False):
+        if com_registro:
+            boleto = BoletoHsbcComRegistro()
+        else:
+            boleto = BoletoHsbcSemRegistro()
+
+        boleto.codigo_banco = "399"
+        boleto.logo_image = "logo_bancohsbc.jpg"
+
+        return boleto
+
+
+class BoletoHsbcSemRegistro(BoletoData):
+    '''
+        Implementação da geração de boletos do HSBC para
+        carteira CNR (sem registro)
+    '''
     numero_documento = custom_property('numero_documento', 13)
 
     def __init__(self):
-        super(BoletoHsbc, self).__init__()
-
-        self.codigo_banco = "399"
-        self.logo_image = "logo_bancohsbc.jpg"
+        super(BoletoHsbcSemRegistro, self).__init__()
         self.carteira = 'CNR'
 
-    def format_nosso_numero(self):
-        nosso_numero = self.nosso_numero
+    @property
+    def dv_nosso_numero(self):
         # Primeiro DV
-        nosso_numero += str(self.modulo11(nosso_numero))
-        # Cobrança com vencimento = 4
-        nosso_numero += "4"
+        dv = str(self.modulo11(self.nosso_numero))
+        # Preencher tipo do identificador
+        # 4 = boleto com vencimento
+        # 5 = boleto sem vencimento
+        if self.data_vencimento:
+            dv += "4"
+        else:
+            dv += "5"
         # Segundo DV
-        sum_params = int(nosso_numero) + int(self.conta_cedente)
-        sum_params += int(self.data_vencimento.strftime('%d%m%y'))
-        sum_params = str(sum_params)
-        nosso_numero += str(self.modulo11(sum_params))
-        return nosso_numero
+        nosso_numero_parcial = self.nosso_numero + dv
+
+        soma_atributos = int(nosso_numero_parcial) + int(self.conta_cedente)
+        soma_atributos += int(self.data_vencimento.strftime('%d%m%y'))
+        soma_atributos = str(soma_atributos)
+        dv += str(self.modulo11(str(soma_atributos)))
+        return dv
+
+    def format_nosso_numero(self):
+
+        return "%s%s" % (self.nosso_numero, self.dv_nosso_numero)
 
     @property
     def data_vencimento_juliano(self):
@@ -48,17 +82,14 @@ class BoletoHsbc(BoletoData):
 
 class BoletoHsbcComRegistro(BoletoData):
     '''
-        Gera Dados necessários para criação de boleto para o banco HSBC
-        com registro
+        Implementação da geração de boletos do HSBC para
+        carteira CSB (com registro)
     '''
     # Nosso numero (sem dv) sao 10 digitos
     nosso_numero = custom_property('nosso_numero', 10)
 
     def __init__(self):
         super(BoletoHsbcComRegistro, self).__init__()
-
-        self.codigo_banco = "399"
-        self.logo_image = "logo_bancohsbc.jpg"
         self.carteira = 'CSB'
         self.especie_documento = 'PD'
 
